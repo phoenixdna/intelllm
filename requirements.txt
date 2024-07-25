@@ -1,0 +1,14 @@
+ipex-llm==2.1.0b20240711
+py-cpuinfo
+gradio
+streamlit
+modelscope==1.12.0
+transformers==4.37.0
+accelerate==0.27.2
+jupyterlab
+ipykernel
+llama_index
+qdrant_client
+fastembed
+huggingface-hub
+numpy==1.26.4
