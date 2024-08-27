@@ -48,7 +48,7 @@ async def bot(history):
 
 # 使用Gradio创建Web界面
 with gr.Blocks() as demo:
-    gr.Markdown("# Qwen 聊天机器人")
+    gr.Markdown("# 法律小助手")
     chatbot = gr.Chatbot()  # 聊天界面组件
     msg = gr.Textbox()  # 用户输入文本框
     clear = gr.Button("清除")  # 清除按钮
@@ -76,4 +76,4 @@ if __name__ == "__main__":
     #root_path = f'/{name}/proxy/{port}'
 
     #demo.launch(root_path=root_path, server_port=port)# 兼容魔搭情况下的路由
-    demo.launch()
+    demo.launch(server_name="0.0.0.0",server_port=port)
