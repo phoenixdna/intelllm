@@ -73,27 +73,23 @@ class QdrantRetriever(BaseRetriever):
         return node_with_scores
 
 
-async def generation_with_knowledge_retrieval(
+async def generation_with_knowledge_retrieval1(
     query_str: str,
     retriever: BaseRetriever,
-    llm: LLM,
-    qa_template: str = QA_TEMPLATE,
     reranker: BaseNodePostprocessor = None,
     debug: bool = False,
-    progress=None,
 
-) -> CompletionResponse:
+) :
     query_bundle = QueryBundle(query_str=query_str)
     #from llama_index.llms.dashscope import DashScope, DashScopeGenerationModels
     #dashscope_llm = DashScope(model_name=DashScopeGenerationModels.QWEN_MAX_1201)
 
     node_with_scores = await retriever.aretrieve(query_bundle)
-
     if debug:
         print("retrieved nodes Number:", len(node_with_scores))
-        #print(f"retrieved:\n{node_with_scores}\n------")
+        # print(f"retrieved:\n{node_with_scores}\n------")
         # 打印每个node的编号、text和score
-        #for i, node in enumerate(node_with_scores, start=1):
+        # for i, node in enumerate(node_with_scores, start=1):
         #    print(f"{i}. {node.text} \n: {node.score}\n")
         for node in node_with_scores:
             print(node)
@@ -101,9 +97,45 @@ async def generation_with_knowledge_retrieval(
         node_with_scores = reranker.postprocess_nodes(node_with_scores, query_bundle)
         if debug:
             print(f"reranked:\n{node_with_scores}\n------")
-            #print("after reranking.....")
-            #for i, node in enumerate(node_with_scores, start=1):
+            # print("after reranking.....")
+            # for i, node in enumerate(node_with_scores, start=1):
             #    print(f"{i}. {node.text} \n: {node.score}\n")
+    return node_with_scores
+
+
+
+async def generation_with_knowledge_retrieval2(
+        query_str: str,
+        node_with_scores,
+        #retriever: BaseRetriever,
+        llm: LLM,
+        qa_template: str = QA_TEMPLATE,
+        debug: bool = False,
+
+) -> CompletionResponse:
+
+
+    #query_bundle = QueryBundle(query_str=query_str)
+    #from llama_index.llms.dashscope import DashScope, DashScopeGenerationModels
+    #dashscope_llm = DashScope(model_name=DashScopeGenerationModels.QWEN_MAX_1201)
+    '''
+        node_with_scores = await retriever.aretrieve(query_bundle)
+        if debug:
+            print("retrieved nodes Number:", len(node_with_scores))
+            # print(f"retrieved:\n{node_with_scores}\n------")
+            # 打印每个node的编号、text和score
+            # for i, node in enumerate(node_with_scores, start=1):
+            #    print(f"{i}. {node.text} \n: {node.score}\n")
+            for node in node_with_scores:
+                print(node)
+        if reranker:
+            node_with_scores = reranker.postprocess_nodes(node_with_scores, query_bundle)
+            if debug:
+                print(f"reranked:\n{node_with_scores}\n------")
+                # print("after reranking.....")
+                # for i, node in enumerate(node_with_scores, start=1):
+                #    print(f"{i}. {node.text} \n: {node.score}\n")
+    '''
     context_str = "\n\n".join(
         [f"{node.metadata['document_title']}: {node.text}" for node in node_with_scores]
     )
@@ -120,11 +152,11 @@ async def generation_with_knowledge_retrieval(
     )
 
     ret = await llm.acomplete(fmt_qa_prompt)
-    #print("精炼前回答：", ret.text)
+    # print("精炼前回答：", ret.text)
 
     '''
         from llama_index.core.response_synthesizers import Refine
-    
+
         refine_prompt_tmpl = (
             "原始查询如下：{query_str}\n"
             "我们已提供现有答案：{existing_answer}\n"
@@ -141,12 +173,10 @@ async def generation_with_knowledge_retrieval(
         texts = []
         for item in node_with_scores:
             texts.append(item.get_text())
-    
+
         summarizer = Refine(llm=dashscope_llm, refine_template=refine_prompt, verbose=True)
         response = summarizer.get_response(query_str, texts)
         print("精炼以后回答:", response)
         ret.text = response
     '''
-    if progress:
-        progress.update(1)
     return ret
