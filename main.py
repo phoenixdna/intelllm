@@ -9,7 +9,7 @@ from tqdm.asyncio import tqdm
 
 from pipeline.ingestion import build_pipeline, build_vector_store, read_data, read_htmldata
 #from pipeline.qa import read_jsonl, save_answers
-from pipeline.rag import QdrantRetriever, generation_with_knowledge_retrieval
+from pipeline.rag import QdrantRetriever, generation_with_knowledge_retrieval2 ,generation_with_knowledge_retrieval1
 
 from intelllm import Intelllm
 import logging
@@ -24,70 +24,101 @@ import nest_asyncio
 
 #nest_asyncio.apply()
 
-async def main(query_str):
-    
+class Main():
 
-    
-    config = dotenv_values(".env")
-    print("Initializing...")
-    from llama_index.core.callbacks import CallbackManager, LlamaDebugHandler
-    llama_debug = LlamaDebugHandler(print_trace_on_end=True)
-    callback_manager = CallbackManager([llama_debug])
+    def __init__(self):
 
-    intel_llm = Intelllm()
+        self.config = dotenv_values(".env")
+        print("Initializing...")
+        from llama_index.core.callbacks import CallbackManager, LlamaDebugHandler
+        llama_debug = LlamaDebugHandler(print_trace_on_end=True)
+        callback_manager = CallbackManager([llama_debug])
 
-    Settings.embed_model = intel_llm.embed_model
-    Settings.llm = intel_llm.llm
-    Settings.callback_manager = callback_manager
-    
-    print("intel llm alreay setup...")
-    # 初始化 数据ingestion pipeline 和 vector store
-    client, vector_store = await build_vector_store(config, reindex=False)
+        self.intel_llm = Intelllm()
 
-    collection_info = await client.get_collection(
-        config["COLLECTION_NAME"] or "law"
-    )
-    #nodes = read_htmldata("datah")
-    data = read_data("data")
-    pipeline = build_pipeline(intel_llm.llm, intel_llm.embed_model, vector_store=vector_store)
+        Settings.embed_model = self.intel_llm.embed_model
+        Settings.llm = self.intel_llm.llm
+        Settings.callback_manager = callback_manager
 
-    cashe_directory = './pipeline_storage'
-    if collection_info.points_count == 0:
+        print("intel llm alreay setup...")
 
-        # 暂时停止实时索引
-        await client.update_collection(
-            collection_name=config["COLLECTION_NAME"] or "law",
-            optimizer_config=models.OptimizersConfigDiff(indexing_threshold=0),
+    async def myrag(self,query_str):
+        # 初始化 数据ingestion pipeline 和 vector store
+        self.client, self.vector_store = await build_vector_store(self.config, reindex=False)
+
+        collection_info = await self.client.get_collection(
+            self.config["COLLECTION_NAME"] or "law"
         )
-        if os.path.exists(cashe_directory) and os.path.isdir(cashe_directory):
-            pipeline.load(cashe_directory)
+        # nodes = read_htmldata("datah")
+        data = read_data("data")
+        pipeline = build_pipeline(self.intel_llm.llm, self.intel_llm.embed_model, vector_store=self.vector_store)
 
-        nodes = list(await pipeline.arun(documents=data, show_progress=True, num_workers=1))
-        # 恢复实时索引
-        await client.update_collection(
-            collection_name=config["COLLECTION_NAME"] or "law",
-            optimizer_config=models.OptimizersConfigDiff(indexing_threshold=20000),
+        cashe_directory = './pipeline_storage'
+        if collection_info.points_count == 0:
+
+            # 暂时停止实时索引
+            await self.client.update_collection(
+                collection_name=self.config["COLLECTION_NAME"] or "law",
+                optimizer_config=models.OptimizersConfigDiff(indexing_threshold=0),
+            )
+            if os.path.exists(cashe_directory) and os.path.isdir(cashe_directory):
+                pipeline.load(cashe_directory)
+
+            nodes = list(await pipeline.arun(documents=data, show_progress=True, num_workers=1))
+            # 恢复实时索引
+            await self.client.update_collection(
+                collection_name=self.config["COLLECTION_NAME"] or "law",
+                optimizer_config=models.OptimizersConfigDiff(indexing_threshold=20000),
+            )
+            print(len(data))
+            # print(len(nodes))
+        # save
+        pipeline.persist(cashe_directory)
+
+        self.vector_retriever = QdrantRetriever(self.vector_store, self.intel_llm.embed_model, similarity_top_k=5)
+
+        # 生成答案
+        print("Start generating rags...")
+
+        print("问题：", query_str)
+        self.nodes_with_score = await generation_with_knowledge_retrieval1(
+            query_str, self.vector_retriever, debug= True
         )
-        print(len(data))
-        #print(len(nodes))
-    # save
-    pipeline.persist(cashe_directory)
+        print("检索长度：", len(self.nodes_with_score))
 
-    vector_retriever = QdrantRetriever(vector_store, intel_llm.embed_model, similarity_top_k=5)
+        return self.myformat(self.nodes_with_score)
+
+    def myformat(self, refer_list):
+        formatted_str = ""
+        for idx, node_with_score in enumerate(refer_list, start=1):
+            node = node_with_score.node
+            score = node_with_score.score
+            title = node.metadata.get('document_title', 'Untitled')
+            text = node.text
+
+            # 按照指定格式生成字符串
+            formatted_str += f"{idx}. Title: {title}\nText: {text}\nScore: {score}\n\n"
+
+        print("formatted_str：\n\n", formatted_str)
+        return formatted_str
+
+    async def main(self,query_str):
+
+        # 生成答案
+        print("Start generating answers...")
 
 
-    # 生成答案
-    print("Start generating answers...")
+        print("问题：", query_str)
+        result = await generation_with_knowledge_retrieval2(
+            query_str, self.nodes_with_score, self.intel_llm.llm, debug=True
+        )
+        print("答复：", result)
 
-
-    print("问题：", query_str)
-    result = await generation_with_knowledge_retrieval(
-        query_str, vector_retriever, intel_llm.llm, debug=True
-    )
-    print("答复：", result)
-    return str(result)
+        return str(result)
 
 
 
 if __name__ == "__main__":
-    asyncio.run(main("小明在保护女友避免被强奸的过程中失手杀死了小王，是否犯法？"))
+    mymain= Main()
+    asyncio.run(mymain.myrag("小明在保护女友避免被强奸的过程中失手杀死了小王，是否犯法？"))
+    asyncio.run(mymain.main("小明在保护女友避免被强奸的过程中失手杀死了小王，是否犯法？"))

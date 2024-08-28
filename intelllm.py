@@ -21,8 +21,8 @@ from ipex_llm.llamaindex.llms import IpexLLM
 
 class Config:
     """配置类,存储所有需要的参数"""
-    model_path = "qwen2chat_7b_int8"
-    tokenizer_path = "qwen2chat_7b_int8"
+    model_path = "qwen2chat_7b_int4"
+    tokenizer_path = "qwen2chat_7b_int4"
 #    question = "How does Llama 2 perform compared to other open-source models?"
     data_path = "./data/llamatiny.pdf"
     persist_dir = "./chroma_db"
