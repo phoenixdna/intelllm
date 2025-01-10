@@ -158,3 +158,23 @@
     resize: both;  /* 允许用户调整大小 */
     overflow: auto; /* 添加滚动支持 */
 }
+
+
+.scroll-hide.svelte-1f354aw {
+  overflow-y: auto !important;
+  scrollbar-width: auto;
+}
+.scroll-hide.svelte-1f354aw::-webkit-scrollbar {
+  display: initial;
+  width: 8px;
+}
+.scroll-hide.svelte-1f354aw::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+.scroll-hide.svelte-1f354aw::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 4px;
+}
+.scroll-hide.svelte-1f354aw::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+}
