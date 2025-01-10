@@ -41,7 +41,7 @@ class QdrantRetriever(BaseRetriever):
         self,
         vector_store: QdrantVectorStore,
         embed_model: BaseEmbedding,
-        similarity_top_k: int = 2,
+        similarity_top_k: int = 10,
     ) -> None:
         self._vector_store = vector_store
         self._embed_model = embed_model
@@ -97,9 +97,9 @@ async def generation_with_knowledge_retrieval1(
         node_with_scores = reranker.postprocess_nodes(node_with_scores, query_bundle)
         if debug:
             print(f"reranked:\n{node_with_scores}\n------")
-            # print("after reranking.....")
-            # for i, node in enumerate(node_with_scores, start=1):
-            #    print(f"{i}. {node.text} \n: {node.score}\n")
+            print("."*50+"after reranking"+"."*50)
+            for i, node in enumerate(node_with_scores, start=1):
+               print(f"{i}. {node.text} \n: {node.score}\n")
     return node_with_scores
 
 
@@ -109,44 +109,26 @@ async def generation_with_knowledge_retrieval2(
         node_with_scores,
         #retriever: BaseRetriever,
         llm: LLM,
+        reranker: BaseNodePostprocessor = None,
         qa_template: str = QA_TEMPLATE,
         debug: bool = False,
 
 ) -> CompletionResponse:
 
 
-    #query_bundle = QueryBundle(query_str=query_str)
-    #from llama_index.llms.dashscope import DashScope, DashScopeGenerationModels
-    #dashscope_llm = DashScope(model_name=DashScopeGenerationModels.QWEN_MAX_1201)
-    '''
-        node_with_scores = await retriever.aretrieve(query_bundle)
+    query_bundle = QueryBundle(query_str=query_str)
+
+    if reranker:
+        node_with_scores = reranker.postprocess_nodes(node_with_scores, query_bundle)
         if debug:
-            print("retrieved nodes Number:", len(node_with_scores))
-            # print(f"retrieved:\n{node_with_scores}\n------")
-            # 打印每个node的编号、text和score
-            # for i, node in enumerate(node_with_scores, start=1):
-            #    print(f"{i}. {node.text} \n: {node.score}\n")
-            for node in node_with_scores:
-                print(node)
-        if reranker:
-            node_with_scores = reranker.postprocess_nodes(node_with_scores, query_bundle)
-            if debug:
-                print(f"reranked:\n{node_with_scores}\n------")
-                # print("after reranking.....")
-                # for i, node in enumerate(node_with_scores, start=1):
-                #    print(f"{i}. {node.text} \n: {node.score}\n")
-    '''
+            print(f"reranked:\n{node_with_scores}\n------")
+            print("after reranking.....")
+            for i, node in enumerate(node_with_scores, start=1):
+               print(f"{i}. {node.text} \n: {node.score}\n")
+
     context_str = "\n\n".join(
-        [f"{node.metadata['document_title']}: {node.text}" for node in node_with_scores]
+        [f"{node.metadata['document_title']}: {node.text}" for node in node_with_scores[:3]]
     )
-    '''
-    from llama_index.core.query_engine import RetrieverQueryEngine
-    query_engine = RetrieverQueryEngine.from_args(retriever)
-    response = query_engine.query(query_str)
-    from llama_index.core.response.notebook_utils import display_response
-    display_response(response)
-    print("哈哈哈Reciprocal Rerank Fusion Retriever",response)
-    '''
     fmt_qa_prompt = PromptTemplate(qa_template).format(
         context_str=context_str, query_str=query_str
     )

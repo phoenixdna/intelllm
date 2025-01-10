@@ -25,7 +25,7 @@ def covert_image_to_base64(image_path):
 def format_welcome_html():
     config = {
         'name': "法律小助手",
-        'description': '系统集成刑法和民法的最新条款，结合Qwen2模型的强大语言理解和生成能力以及使用ipex-llm的低成本推理能力，提供精确的法律咨询服务和解读分析。😊',
+        'description': '系统集成刑法和民法的最新条款，结合Qwen2.5模型的强大语言理解和生成能力以及使用ipex-llm的低成本推理能力，提供精确的法律咨询服务和解读分析。😊',
         'introduction_label': "<br>软件功能",
         'rule_label': "<br>操作指南",
         'char1': 'RAG技术实现高效精准的法律条文检索，帮助用户快速获取所需信息，大幅提升法律研究效率。',

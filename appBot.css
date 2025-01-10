@@ -132,3 +132,29 @@
   border-radius: 4px;
   font-size: 0.9em;
 }
+
+/* appBot.css */
+#pdf_textbox textarea::-webkit-scrollbar {
+    width: 8px;
+}
+
+#pdf_textbox textarea::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#pdf_textbox textarea::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#pdf_textbox textarea::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+#resizable-chatbot {
+    height: 600px; /* 设置高度 */
+    width: 800px;  /* 设置宽度 */
+    resize: both;  /* 允许用户调整大小 */
+    overflow: auto; /* 添加滚动支持 */
+}

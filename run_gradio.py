@@ -10,15 +10,6 @@ from threading import Thread, Event
 
 from utils import format_welcome_html
 from pdfminer.high_level import extract_text
-# 设置环境变量
-os.environ["OMP_NUM_THREADS"] = "8"  # 设置OpenMP线程数为8,用于控制并行计算
-
-import nest_asyncio
-import asyncio
-
-#nest_asyncio.apply()
-#loop = asyncio.new_event_loop()
-#asyncio.set_event_loop(loop)    
 
 mymain = Main()
 
@@ -29,14 +20,14 @@ def user(user_message, history):
 # 定义机器人回复生成函数
 async def bot(history):
     global mymain
+
+    await mymain.setup()  # 等待mymain.setup()异步执行
     #stop_event.clear()  # 重置停止事件
     prompt = history[-1][0]  # 获取最新的用户输入
     
     
     start_time = time.time()  # 记录开始时间
     print(f"\n用户输入: {prompt}")
-    print("\n模型输出: ", )
-
     #text = await mymain.myrag(prompt)
 
     generated_text = await mymain.main(prompt)
@@ -52,8 +43,8 @@ async def bot(history):
 async def get_refer(history):
     prompt = history[-1][0]  # 获取最新的用户输入
     global mymain
+    await mymain.setup()  # 等待mymain.setup()异步执行
     start_time = time.time()  # 记录开始时间
-    mymain= Main()
     text = await mymain.myrag(prompt)
     end_time = time.time()
     print(f"\n\nRAG检索完成，用时: {end_time - start_time:.2f} 秒")
@@ -127,7 +118,7 @@ with gr.Blocks(js=js_func,css='appBot.css') as demo:
     with main_tabs:
         with gr.Tab('主界面'):
             with gr.Row():
-                chatbot = gr.Chatbot()  # 聊天界面组件
+                chatbot = gr.Chatbot(elem_id="resizable-chatbot")  # 聊天界面组件
                 refer_output = gr.Textbox(label="检索结果", lines=10, interactive=False, visible=True)
             msg = gr.Textbox(label= "用户输入", placeholder='请在此输入您的问题，回车提交')  # 用户输入文本框
             with gr.Column():
@@ -166,8 +157,11 @@ with gr.Blocks(js=js_func,css='appBot.css') as demo:
     ).then(
         bot, chatbot, chatbot
     )
-    clear.click(lambda: None, None, [chatbot,refer_output], queue=False)  # 清除按钮功能
+    clear.click(lambda: ([], "",""), None, [chatbot, refer_output,text_box], queue=False)  # 清除按钮功能
     #stop.click(stop_generation, queue=False)  # 停止生成按钮功能
+
+    # 3. 绑定异步回调函数
+
 
     new_button.click(game_ui, outputs=[tabs, main_tabs])
     return_welcome_button.click(welcome_ui, outputs=[tabs, main_tabs])

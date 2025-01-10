@@ -8,122 +8,44 @@ from typing import Any, List, Optional
 
 # 从llama_index库导入所需的类
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-#from llama_index.vector_stores.chroma import ChromaVectorStore
-#from llama_index.readers.file import PyMuPDFReader
-from llama_index.core.schema import NodeWithScore, TextNode
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core import QueryBundle
-from llama_index.core.retrievers import BaseRetriever
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.vector_stores import VectorStoreQuery
-#import chromadb
 from ipex_llm.llamaindex.llms import IpexLLM
+
+from modelscope import snapshot_download
+MODEL_BASE_DIR = 'models'
+llm_model_dir = snapshot_download('Qwen/Qwen2.5-1.5B-Instruct', cache_dir=MODEL_BASE_DIR, revision='master')
+emb_model_dir = snapshot_download('BAAI/bge-small-zh-v1.5', cache_dir=MODEL_BASE_DIR, revision='master')
+#reranker_model_dir = snapshot_download('BAAI/bge-reranker-base', cache_dir=MODEL_BASE_DIR, revision='master')
+
+q_llm_model_dir = "qwen25-1.5b_int8"
+
+from ipex_llm.transformers import AutoModelForCausalLM
+from transformers import  AutoTokenizer
+def prepare_quantization():
+    # Check if the target directory exists
+    if not os.path.exists(q_llm_model_dir):
+        model_path = os.path.join(os.getcwd(), llm_model_dir)
+        model = AutoModelForCausalLM.from_pretrained(model_path, load_in_low_bit='sym_int8', trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    
+
+        # If not, save the model and tokenizer to the target directory
+        model.save_low_bit(q_llm_model_dir)
+        tokenizer.save_pretrained(q_llm_model_dir)
+        print(f"Model and tokenizer saved to {q_llm_model_dir}")
+    else:
+        print(f"Directory {q_llm_model_dir} already exists. Skipping save.")
+
 
 class Config:
     """配置类,存储所有需要的参数"""
-    model_path = "qwen2chat_7b_int4"
-    tokenizer_path = "qwen2chat_7b_int4"
-#    question = "How does Llama 2 perform compared to other open-source models?"
-    data_path = "./data/llamatiny.pdf"
-    persist_dir = "./chroma_db"
-    embedding_model_path = "qwen2chat_src/AI-ModelScope/bge-small-zh-v1___5"
+    model_path = q_llm_model_dir
+    tokenizer_path = q_llm_model_dir
+    #question = "How does Llama 2 perform compared to other open-source models?"
+    #data_path = "./data/llamatiny.pdf"
+    #persist_dir = "./chroma_db"
+    embedding_model_path = emb_model_dir
     max_new_tokens = 512
-'''
-def load_vector_database(persist_dir: str) -> ChromaVectorStore:
-    """
-    加载或创建向量数据库
-    
-    Args:
-        persist_dir (str): 持久化目录路径
-    
-    Returns:
-        ChromaVectorStore: 向量存储对象
-    """
-    if os.path.exists(persist_dir):
-        print(f"正在加载现有的向量数据库: {persist_dir}")
-        chroma_client = chromadb.PersistentClient(path=persist_dir)
-        chroma_collection = chroma_client.get_collection("llama2_paper")
-    else:
-        print(f"创建新的向量数据库: {persist_dir}")
-        chroma_client = chromadb.PersistentClient(path=persist_dir)
-        chroma_collection = chroma_client.create_collection("llama2_paper")
-    print(f"Vector store loaded with {chroma_collection.count()} documents")
-    return ChromaVectorStore(chroma_collection=chroma_collection)
 
-def load_data(data_path: str) -> List[TextNode]:
-    """
-    加载并处理PDF数据
-    
-    Args:
-        data_path (str): PDF文件路径
-    
-    Returns:
-        List[TextNode]: 处理后的文本节点列表
-    """
-    loader = PyMuPDFReader()
-    documents = loader.load(file_path=data_path)
-
-    text_parser = SentenceSplitter(chunk_size=384)
-    text_chunks = []
-    doc_idxs = []
-    for doc_idx, doc in enumerate(documents):
-        cur_text_chunks = text_parser.split_text(doc.text)
-        text_chunks.extend(cur_text_chunks)
-        doc_idxs.extend([doc_idx] * len(cur_text_chunks))
-
-    nodes = []
-    for idx, text_chunk in enumerate(text_chunks):
-        node = TextNode(text=text_chunk)
-        src_doc = documents[doc_idxs[idx]]
-        node.metadata = src_doc.metadata
-        nodes.append(node)
-    return nodes
-
-class VectorDBRetriever(BaseRetriever):
-    """向量数据库检索器"""
-
-    def __init__(
-        self,
-        vector_store: ChromaVectorStore,
-        embed_model: Any,
-        query_mode: str = "default",
-        similarity_top_k: int = 2,
-    ) -> None:
-        self._vector_store = vector_store
-        self._embed_model = embed_model
-        self._query_mode = query_mode
-        self._similarity_top_k = similarity_top_k
-        super().__init__()
-
-    def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
-        """
-        检索相关文档
-        
-        Args:
-            query_bundle (QueryBundle): 查询包
-        
-        Returns:
-            List[NodeWithScore]: 检索到的文档节点及其相关性得分
-        """
-        query_embedding = self._embed_model.get_query_embedding(
-            query_bundle.query_str
-        )
-        vector_store_query = VectorStoreQuery(
-            query_embedding=query_embedding,
-            similarity_top_k=self._similarity_top_k,
-            mode=self._query_mode,
-        )
-        query_result = self._vector_store.query(vector_store_query)
-
-        nodes_with_scores = []
-        for index, node in enumerate(query_result.nodes):
-            score: Optional[float] = None
-            if query_result.similarities is not None:
-                score = query_result.similarities[index]
-            nodes_with_scores.append(NodeWithScore(node=node, score=score))
-        print(f"Retrieved {len(nodes_with_scores)} nodes with scores")
-        return nodes_with_scores
-'''
 def completion_to_prompt(completion: str) -> str:
     """
     将完成转换为提示格式
@@ -175,20 +97,31 @@ def setup_llm(config: Config) -> IpexLLM:
     return IpexLLM.from_model_id_low_bit(
         model_name=config.model_path,
         tokenizer_name=config.tokenizer_path,
-        context_window=2048,
+        context_window=4096,
         max_new_tokens=config.max_new_tokens,
-        generate_kwargs={"temperature": 0.7, "do_sample": True},
+        generate_kwargs={
+            "temperature": 0.7,  # 控制生成的多样性
+            "do_sample": True,  # 采样
+            "top_p": 0.85,  # Top-p 采样设置，限制多样性
+            "top_k": 50,  # Top-k 采样限制
+            "repetition_penalty": 1.2,  # 重复惩罚
+            #"max_length": 512  # 限制最大生成长度
+        },
         model_kwargs={},
         messages_to_prompt=messages_to_prompt,
         completion_to_prompt=completion_to_prompt,
         device_map="cpu",
     )
-
-
+from llama_index.core.postprocessor import SentenceTransformerRerank
 class Intelllm:
+
     def __init__(self) -> None:
+        prepare_quantization()
         self.config = Config()
         self.embed_model = HuggingFaceEmbedding(model_name=self.config.embedding_model_path)
         self.llm = setup_llm(self.config)
-
+        #self.reranker = SentenceTransformerRerank(
+        #    top_n=5,
+        #    model=reranker_model_dir
+        #)
 

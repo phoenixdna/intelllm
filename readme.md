@@ -1,27 +1,84 @@
-首先感谢主办方和intel，该项目主要构建了一个基于Qwen2 7B CPU量化INT4/INT8模型的法律智能助手，专注于刑法和民法领域，能够准确解读和应用相关法律条文，为用户提供即时、经济高效的法律咨询和案件分析服务。2024-08-28
+# 法律小助手
 
-使用的主要软件包：
-- IPEX：ipex-llm（Intel® Extension for PyTorch Large Language Models）：是一个基于 PyTorch 的库，主旨在 Intel CPU 和 GPU 上高效运行大型语言模型（LLM）。该库特别适用于本地 PC 上的集成显卡（iGPU）和独立显卡（如 Arc、Flex 和 Max），能够以极低的延迟进行推理和微调。
-- LLamaIndex：LlamaIndex 是一个用于构建大型语言模型（LLM）数据应用的框架。它支持多种语言模型的集成，使得开发者能够更高效地处理和利用大规模数据，特别是在信息检索、问答系统和知识管理等应用场景中。
+## 项目简介
+本项目基于 IPEX-LLM 技术开发，旨在为用户提供法律相关问题的智能解答服务。通过解析用户输入问题，引用相关法律条文进行回答，适用于法律咨询等场景。
 
-主要的硬件依赖：
-IntelCPU：
-- 比如i5-12490；32G内存
-- 阿里云的g8i-6xlargeCPU：Intel(R) Xeon(R) Platinum 8575C @ 3.00GHz，核心数24；内存96G
+## 软件运行环境要求
+- **CPU**: 6核及以上
+- **内存**: 16GB及以上
+- **Python 版本**: 3.9+
+- **Torch版本**：2.2.2+
 
+## 项目目录结构
+```
+│  .env                             # 环境变量配置文件
+│  .gitignore                       # Git 忽略文件
+│  appBot.css                       # 前端样式表
+│  intelllm.py                      # 智能模块核心逻辑
+│  logo1.jpg                        # 项目 Logo
+│  main.py                          # 主入口脚本
+│  OpenAtom-基于IPEX-LLM生成式AI(AIGC)行业场景应用开发创新赛-法律小助手-zlink.docx # 比赛说明文档
+│  requirements.txt                 # Python 依赖库列表
+│  runapp.sh                        # Linux 系统运行脚本
+│  run_gradio.py                    # Gradio Web 界面入口
+│  utils.py                         # 工具函数
+│
+├─custom                            # 自定义模块
+│  │  template.py                   # 模板生成逻辑
+│  │  transformation.py             # 数据转换功能
+│
+├─data                              # 数据文件夹
+│      刑法.pdf                     # 刑法全文
+│      民法典.pdf                   # 民法典全文
+│
+└─pipeline                          # 数据处理与检索模块
+    │  ingestion.py                 # 数据加载与预处理
+    │  rag.py                       # 检索增强生成逻辑
+```
 
-相关步骤如下：
+## 安装与运行
 
-1. 需要先安装requirements.txt所有依赖；
-2. 然后进行模型下载，downlaod.py
-3. 进行emb模型下载，downlaod2.py
-4. 进行模型量化，并完成本地存储：quantization.py（建议选择int4）
-5. 运行run_graido.py进行法律援助问答
+### 安装依赖
 
-说下结论：
-当前使用了比赛要求的g8i-6xlarge的情况：
-- 对于rag查询基本都是10秒级别（8-9秒不等）
-- 对于模型推理如果是int4，在40-60秒时间不等；
-- 对于模型推理如果是int8，在80-100秒时间不等；
+1. 在项目根目录运行以下命令，安装所需依赖：
+```bash
+pip install -r requirements.txt
+```
+2. 启动前确保requirements.txt的安装依赖库已经得到了安装，也可以使用一键启动脚本完成依赖环境的安装，详细参考启动服务的shell脚本说明
 
-具体可以参考我PR里面的output_performance.txt（终端输出）
+### 启动服务
+#### 方法 1: 使用 Gradio 启动
+运行以下命令，启动 Gradio Web 界面：
+```bash
+python run_gradio.py
+```
+
+#### 方法 2: 使用 Shell 脚本启动 (Linux)
+运行以下命令：
+```bash
+sh runapp.sh
+```
+
+注意事项：1. 该脚本会先行下载一个2G左右的文件，展开后作为虚拟环境，要确保在这个环境下完成requirements.txt的安装；
+2. 需要使用transformers==4.37.0
+3. 需要使用gradio==4.43.0
+
+## 功能模块说明
+
+### 核心模块
+- **main.py**: 封装了rag的核心接口。
+- **intelllm**：封装了适用于llamaindex和ipex的llm
+- **run_gradio.py**：主程序界面。
+- **pipeline/ingestion.py**: 处理法律文档的数据加载和预处理。
+- **pipeline/rag.py**: 基于 RAG 技术实现检索增强生成。
+
+### 自定义功能
+- **custom/template.py**: 定义模板生成逻辑，用于回答结构化输出。
+- **custom/transformation.py**: 数据转换逻辑。
+
+### 数据资源
+- **data/刑法.pdf** 和 **data/民法典.pdf**: 提供法律条文作为回答依据。
+
+## 相关资料
+- **项目 Logo**: `logo1.jpg`
+- **比赛说明文档**: `OpenAtom-基于IPEX-LLM生成式AI(AIGC)行业场景应用开发创新
